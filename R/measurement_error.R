@@ -81,9 +81,13 @@ sleuth_fit <- function(obj, formula = NULL, fit_name = NULL, ...) {
   A <- solve(t(X) %*% X)
 
   msg("fitting measurement error models")
+  #me_model_by_row does the actual GLM solving for each row(i.e. transcript)
   mes <- me_model_by_row(obj, X, obj$bs_summary)
   tid <- names(mes)
 
+  # change mes into more readable data frame
+  # biological variance = sigma_sq. Technical variance = sigma_q_sq.  The two should add up to $rss
+  # TODO I'm considering adding the variance to the ultimate data frame so it is not lost in $mes$TRANSCRIPT$olsfit$coefficients
   mes_df <- dplyr::bind_rows(lapply(mes,
     function(x) {
       data.frame(rss = x$rss, sigma_sq = x$sigma_sq, sigma_q_sq = x$sigma_q_sq,
@@ -93,6 +97,7 @@ sleuth_fit <- function(obj, formula = NULL, fit_name = NULL, ...) {
   mes_df$target_id <- tid
   rm(tid)
 
+  # make sigma_sq positive if it is negative (it becomes a new column)
   mes_df <- dplyr::mutate(mes_df, sigma_sq_pmax = pmax(sigma_sq, 0))
 
   # FIXME: sometimes when sigma is negative the shrinkage estimation becomes NA
@@ -149,6 +154,58 @@ model_exists <- function(obj, which_model, fail = TRUE) {
   }
 
   result
+}
+
+
+
+# Measurement error model
+#
+# Fit the measurement error model across all samples
+#
+# @param obj a \code{sleuth} object
+# @param design a design matrix
+# @param bs_summary a list from \code{bs_sigma_summary}
+# @return a list with a bunch of objects that are useful for shrinking
+me_model_by_row <- function(obj, design, bs_summary) {
+  # stopifnot( is(obj, "sleuth") )
+  
+  stopifnot( all.equal(names(bs_summary$sigma_q_sq), rownames(bs_summary$obs_counts)) )
+  stopifnot( length(bs_summary$sigma_q_sq) == nrow(bs_summary$obs_counts))
+  
+  models <- lapply(1:nrow(bs_summary$obs_counts),
+                   function(i) {
+                     me_model(design, bs_summary$obs_counts[i,], bs_summary$sigma_q_sq[i])
+                   })
+  names(models) <- rownames(bs_summary$obs_counts)
+  
+  models
+}
+
+# me_model
+# actual OLS solver where we also calculate raw variance, subtract out technical variance
+# I believe sigma_q_sq is from the bootstrapping technical variance
+me_model <- function(X, y, sigma_q_sq) {
+  n <- nrow(X)
+  degrees_free <- n - ncol(X)
+  
+  #can add weights to lm.fit (X, y, w) here
+  ols_fit <- lm.fit(X, y)
+  rss <- sum(ols_fit$residuals ^ 2)
+  # subtracting out the technical variance from the raw variance
+  sigma_sq <- rss / (degrees_free) - sigma_q_sq
+  
+  mean_obs <- mean(y)
+  var_obs <- var(y)
+  
+  list(
+    ols_fit = ols_fit,
+    b1 = ols_fit$coefficients[2],
+    rss = rss,
+    sigma_sq = sigma_sq,
+    sigma_q_sq = sigma_q_sq,
+    mean_obs = mean_obs,
+    var_obs = var_obs
+  )
 }
 
 #' Wald test for a sleuth model
@@ -251,28 +308,7 @@ covar_beta <- function(sigma, X, A) {
   A %*% (t(X) %*% diag(sigma) %*% X) %*% A
 }
 
-# Measurement error model
-#
-# Fit the measurement error model across all samples
-#
-# @param obj a \code{sleuth} object
-# @param design a design matrix
-# @param bs_summary a list from \code{bs_sigma_summary}
-# @return a list with a bunch of objects that are useful for shrinking
-me_model_by_row <- function(obj, design, bs_summary) {
-  # stopifnot( is(obj, "sleuth") )
 
-  stopifnot( all.equal(names(bs_summary$sigma_q_sq), rownames(bs_summary$obs_counts)) )
-  stopifnot( length(bs_summary$sigma_q_sq) == nrow(bs_summary$obs_counts))
-
-  models <- lapply(1:nrow(bs_summary$obs_counts),
-    function(i) {
-      me_model(design, bs_summary$obs_counts[i,], bs_summary$sigma_q_sq[i])
-    })
-  names(models) <- rownames(bs_summary$obs_counts)
-
-  models
-}
 
 # non-equal var
 #
@@ -355,22 +391,31 @@ me_white_var <- function(df, sigma_col, sigma_q_col, X, tXX_inv) {
 
 
 
+# BOOTSTRAP, used when loading into sleuth obj during sleuth prep (for transcript, not for aggregation)
 #' @export
 bs_sigma_summary <- function(obj, transform = identity, norm_by_length = FALSE) {
   # if (norm_by_length) {
   #   scaling_factor <- get_scaling_factors(obj$obs_raw)
-  #   reads_per_base_transform()
+  #   reads_per_base_trasonsform()
   # }
   obs_counts <- obs_to_matrix(obj, "est_counts")
   obs_counts <- transform( obs_counts )
 
+  
+  sample = s2c$sample
+  weight = c(1, 1, 1, 1, 10, 10, 10, 10)
+  bootstrap_weights <-  data.frame(sample, weight)
+  
+  #####made changes here##
+  # potentially bind bs_summary to sampple id and weight, currently has column  "sample" with sampleIDs, bind to weight, then average as such
   bs_summary <- sleuth_summarize_bootstrap_col(obj, "est_counts", transform)
+  bootstrap_weights <- bootstrap_weights
+  bs_summary <- merge(bs_summary, bootstrap_weights, by.x='sample', by.y='sample')
   bs_summary <- dplyr::group_by(bs_summary, target_id)
   bs_summary <- dplyr::summarise(bs_summary,
-    sigma_q_sq = mean(bs_var_est_counts))
+    sigma_q_sq = weighted.mean(bs_var_est_counts, weight))
 
   bs_summary <- as_df(bs_summary)
-
   bs_sigma <- bs_summary$sigma_q_sq
   names(bs_sigma) <- bs_summary$target_id
   bs_sigma <- bs_sigma[rownames(obs_counts)]
@@ -485,24 +530,3 @@ gene_summary <- function(obj, which_column, transform = identity, norm_by_length
   list(obs_counts = obs_counts, sigma_q_sq = bs_sigma)
 }
 
-me_model <- function(X, y, sigma_q_sq) {
-  n <- nrow(X)
-  degrees_free <- n - ncol(X)
-
-  ols_fit <- lm.fit(X, y)
-  rss <- sum(ols_fit$residuals ^ 2)
-  sigma_sq <- rss / (degrees_free) - sigma_q_sq
-
-  mean_obs <- mean(y)
-  var_obs <- var(y)
-
-  list(
-    ols_fit = ols_fit,
-    b1 = ols_fit$coefficients[2],
-    rss = rss,
-    sigma_sq = sigma_sq,
-    sigma_q_sq = sigma_q_sq,
-    mean_obs = mean_obs,
-    var_obs = var_obs
-    )
-}
