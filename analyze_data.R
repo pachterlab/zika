@@ -29,6 +29,7 @@ t2g <- dplyr::rename(t2g, target_id = ensembl_transcript_id,
 so <- sleuth_prep(s2c, ~ condition, target_mapping = t2g)
 so <- sleuth_fit(so)
 so <- sleuth_fit(so, ~1, 'reduced')
+so <- sleth_lrt(so, 'reduced', 'full')
 
 #modify sleuth_live call?
 sleuth_live(so)
