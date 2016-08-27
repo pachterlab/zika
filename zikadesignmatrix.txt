@@ -1,0 +1,9 @@
+	sample	condition	read	fragments
+1	SRR3191542	mock	paired	7927777
+2	SRR3191543	mock	paired	7391076
+3	SRR3191544	zika	paired	7361527
+4	SRR3191545	zika	paired	7621347
+5	SRR3194428	mock	single	72983243
+6	SRR3194429	mock	single	94729809
+7	SRR3194430	zika	single	71055823
+8	SRR3194431	zika	single	66528035
