@@ -403,7 +403,7 @@ bs_sigma_summary <- function(obj, transform = identity, norm_by_length = FALSE) 
 
   
   sample = s2c$sample
-  weight = c(1, 1, 1, 1, 10, 10, 10, 10)
+  weight = s2c$fragments
   bootstrap_weights <-  data.frame(sample, weight)
   
   #####made changes here##

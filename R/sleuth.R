@@ -307,7 +307,7 @@ sleuth_prep <- function(
     ret$obs_norm_filt <- dplyr::semi_join(obs_norm, filter_df, by = 'target_id')
     ret$tpm_sf <- tpm_sf
 
-
+    #BOOTSTRAPS START HERE ##############################################
     msg('summarizing bootstraps')
     bs_summary <- NULL
     if (is.null(aggregation_column)) {
@@ -479,6 +479,7 @@ sleuth_summarize_bootstrap <- function(obj, force = FALSE, verbose = FALSE) {
   obj
 }
 
+# BOOTSTRAP
 sleuth_summarize_bootstrap_col <- function(obj, col, transform = identity) {
   res <- lapply(seq_along(obj$kal), function(i) {
       cur_samp <- obj$sample_to_covariates$sample[i]
