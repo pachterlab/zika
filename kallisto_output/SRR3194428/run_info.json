@@ -1,0 +1,9 @@
+{
+	"n_targets": 178136,
+	"n_bootstraps": 100,
+	"n_processed": 72983243,
+	"kallisto_version": "0.43.0",
+	"index_version": 10,
+	"start_time": "Tue Aug 16 15:47:02 2016",
+	"call": "../kallisto/kallisto quant -i Homo_sapiens.GRCh38.cdna.all.fa.gz.idx -b 100 -o output2/SRR3194428 --single -l 187 -s 70 SRR3194428"
+}

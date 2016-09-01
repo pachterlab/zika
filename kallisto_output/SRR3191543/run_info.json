@@ -1,0 +1,9 @@
+{
+	"n_targets": 178136,
+	"n_bootstraps": 100,
+	"n_processed": 7391076,
+	"kallisto_version": "0.43.0",
+	"index_version": 10,
+	"start_time": "Fri Aug  5 01:16:09 2016",
+	"call": "./kallisto quant -i index.idx -o SRR3191543 -b 100 /Users/lynnyi/Documents/workspace/SRR3191543.fasta_R1 /Users/lynnyi/Documents/workspace/SRR3191543.fasta_R2"
+}

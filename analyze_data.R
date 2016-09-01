@@ -5,7 +5,7 @@ library(lazyeval)
 
 
 #modify directory to Zika data
-base_dir <- "/Users/lynnyi/workspace/Zika Data/"
+base_dir <- "."
 sample_id <- dir(file.path(base_dir, "kallisto_output"))
 sample_id
 
@@ -14,7 +14,7 @@ kal_dirs <- sapply(sample_id, function(id) file.path(base_dir, "kallisto_output"
 kal_dirs
 
 #modify directory of design matrix
-s2c <- read.table("/Users/lynnyi/workspace/sleuth/tests/sampletable_test.txt", header = TRUE, stringsAsFactors = FALSE)
+s2c <- read.table("./zikadesignmatrix.txt", header = TRUE, stringsAsFactors = FALSE)
 s2c <- dplyr::mutate(s2c, path = kal_dirs)
 s2c
 
