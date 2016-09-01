@@ -1,0 +1,5 @@
+	sample	condition	read	fragments
+1	SRR3191542	mock	paired	7927777
+2	SRR3191543	mock	paired	7391076
+3	SRR3194428	mock	single	72983243
+4	SRR3194429	mock	single	94729809
