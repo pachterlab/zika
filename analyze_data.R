@@ -2,7 +2,14 @@
 library(magrittr)
 library(dplyr)
 library(lazyeval)
+library(ggplot2)
 
+
+# load modified sleuth sleuth
+modified_sleuth_dir <- './R/'
+files <- list.files(modified_sleuth_dir)
+files <- sapply(files, function(x) file.path(modified_sleuth_dir, x))
+lapply(files, source)
 
 #modify directory to Zika data
 base_dir <- "."
